@@ -29,7 +29,7 @@ body{
 }
 
 .common-header {
-  background-color: aquamarine;
+  background-color: rgba(87, 255, 199, 0.708);
   .common-container {
     width: 100%;
     display: flex;
