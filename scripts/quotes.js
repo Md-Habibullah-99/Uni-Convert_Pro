@@ -43,5 +43,3 @@ async function fetchQuote(){
 }
 
 fetchQuote();
-
-document.getElementById('quoteButton').addEventListener('click', fetchQuote);

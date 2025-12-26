@@ -10,12 +10,3 @@
   font-size: 12px;
   font-style: italic;
 }
-
-.quote_button {
-  border: none;
-  padding: 12px 24px;
-  background-color: rgba(102, 255, 204, 0.6);
-  font-size: 18px;
-  font-weight: bold;
-  cursor: pointer;
-}

@@ -1,0 +1,23 @@
+textarea,
+input[type="file"] {
+  width: 100%;
+  padding: 10px;
+  margin-top: 5px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+  /* Important for padding/border */
+}
+
+.card {
+  padding: 20px;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.note {
+  font-size: 0.9em;
+  color: #6c757d;
+  margin-top: 10px;
+}

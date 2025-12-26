@@ -4,6 +4,13 @@ body{
   font-family: 'Roboto', Arial, Helvetica, sans-serif;
 }
 
+
+h2 {
+    color: #007bff;
+    margin-top: 0;
+    margin-bottom: 15px;
+}
+
 .bg_img {
   position: fixed;
   top: 50%;

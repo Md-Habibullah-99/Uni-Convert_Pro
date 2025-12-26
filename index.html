@@ -12,10 +12,11 @@
   <link rel="stylesheet" href="styles/main.css">
   <link rel="stylesheet" href="styles/header.css">
   <link rel="stylesheet" href="styles/quotes.css">
+  <link rel="stylesheet" href="styles/uploadSection.css">
 
   <!-- favicon -->
   <link rel="icon" type="image/png" href="data/images/favicon.png">
-  <title>Convert to PDF</title>
+  <title>Uni-Convert Pro</title>
 </head>
 <body>
   <header class="common-section common-header">
@@ -32,15 +33,17 @@
   <section class="common-section">
     <div class="common-container quotes-section">
       <div class="quote_container">
-        <h2 id="quote"></h2>
-        <h2 id="author"></h2>
+        <h3 id="quote"></h3>
+        <h3 id="author"></h3>
       </div>
-      <button class="quote_button" id="quoteButton" >New Quote</button>
     </div>
   </section>
   
   <section class="common-section">
-    <div class="common-container">
+    <div class="common-container card">
+      <h2>1. Upload Files (.txt, .jpg, .jpeg, .png)</h2>
+      <input type="file" id="file-input" accept=".txt, .jpg, .jpeg, .png" multiple>
+      <p class="note">Select one or more text files and/or images. Each file will be placed sequentially in the PDF.</p>
     </div>
   </section>
 </body>
