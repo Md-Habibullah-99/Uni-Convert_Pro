@@ -73,6 +73,18 @@ button.secondary {
   border-radius: 6px;
   border: 1px solid #ddd;
 }
+.text-thumb {
+  width: 140px;
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  background: #f7f7f7;
+  font-weight: 600;
+  color: #555;
+}
 .thumb-caption {
   font-size: 0.9em;
   color: #333;

@@ -12,6 +12,9 @@ let selectedFiles = [];
 function isImage(file) {
   return /^image\/(png|jpe?g)$/i.test(file.type) || /\.(png|jpe?g)$/i.test(file.name);
 }
+function isText(file) {
+  return /^text\/plain$/i.test(file.type) || /\.txt$/i.test(file.name);
+}
 
 function clearListUI() {
   fileListEl.innerHTML = '<li>No images selected.</li>';
@@ -26,18 +29,24 @@ function renderThumbnails(files) {
   files.forEach((file, idx) => {
     const li = document.createElement('li');
     li.className = 'thumb-item';
-
-    const img = document.createElement('img');
-    img.className = 'thumb';
-    img.alt = file.name;
-    img.src = URL.createObjectURL(file);
-    img.onload = () => URL.revokeObjectURL(img.src);
-
     const caption = document.createElement('div');
     caption.className = 'thumb-caption';
     caption.textContent = `${idx + 1}. ${file.name}`;
 
-    li.appendChild(img);
+    if (isImage(file)) {
+      const img = document.createElement('img');
+      img.className = 'thumb';
+      img.alt = file.name;
+      img.src = URL.createObjectURL(file);
+      img.onload = () => URL.revokeObjectURL(img.src);
+      li.appendChild(img);
+    } else if (isText(file)) {
+      const icon = document.createElement('div');
+      icon.className = 'text-thumb';
+      icon.textContent = 'TXT';
+      li.appendChild(icon);
+    }
+
     li.appendChild(caption);
     frag.appendChild(li);
   });
@@ -46,7 +55,7 @@ function renderThumbnails(files) {
 }
 
 function addFiles(files) {
-  const newFiles = Array.from(files).filter(isImage);
+  const newFiles = Array.from(files).filter(f => isImage(f) || isText(f));
   if (!newFiles.length) return;
   selectedFiles = selectedFiles.concat(newFiles);
   renderThumbnails(selectedFiles);
@@ -102,6 +111,20 @@ function fileToDataURL(file) {
 }
 
 /**
+ * Read a File as text
+ * @param {File} file
+ * @returns {Promise<string>}
+ */
+function fileToText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = reject;
+    reader.readAsText(file);
+  });
+}
+
+/**
  * Compute image placement preserving aspect ratio
  */
 function computePlacement(imgW, imgH, pageW, pageH, margin = 24) {
@@ -137,15 +160,38 @@ async function convertToPDF() {
   const doc = new JsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
+  const margin = 24;
+  const lineHeight = 14; // for text pages
 
   let first = true;
   for (const file of selectedFiles) {
     try {
-      const dataUrl = await fileToDataURL(file);
-      const img = await loadImage(dataUrl);
-      if (!first) doc.addPage();
-      const { x, y, drawW, drawH } = computePlacement(img.naturalWidth, img.naturalHeight, pageW, pageH);
-      doc.addImage(dataUrl, getImageFormat(file), x, y, drawW, drawH);
+      if (isImage(file)) {
+        const dataUrl = await fileToDataURL(file);
+        const img = await loadImage(dataUrl);
+        if (!first) doc.addPage();
+        const { x, y, drawW, drawH } = computePlacement(img.naturalWidth, img.naturalHeight, pageW, pageH);
+        doc.addImage(dataUrl, getImageFormat(file), x, y, drawW, drawH);
+      } else if (isText(file)) {
+        const text = await fileToText(file);
+        const wrapped = doc.splitTextToSize(text, pageW - margin * 2);
+        let idx = 0;
+        const linesPerPage = Math.floor((pageH - margin * 2) / lineHeight);
+        while (idx < wrapped.length) {
+          if (!first) doc.addPage();
+          doc.setFontSize(12);
+          const slice = wrapped.slice(idx, idx + linesPerPage);
+          doc.text(slice, margin, margin + 12, { baseline: 'top' });
+          idx += linesPerPage;
+          first = false;
+        }
+        // Ensure first is false even if empty text
+        if (wrapped.length === 0) {
+          if (!first) doc.addPage();
+          first = false;
+        }
+        continue;
+      }
       first = false;
     } catch (err) {
       console.error('Error processing', file.name, err);
