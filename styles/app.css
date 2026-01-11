@@ -1,0 +1,79 @@
+/* Simple styles for Image → PDF UI */
+
+.common-header {
+  background-color: rgba(87, 255, 199, 0.708);
+}
+.common-header .common-container {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  padding: 10px 16px;
+}
+.common-header .header-left {
+  font-weight: bold;
+  font-size: 22px;
+}
+
+.card {
+  padding: 20px;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  background: #fff;
+}
+
+.dropzone {
+  margin-top: 10px;
+  border: 2px dashed #6c757d;
+  border-radius: 6px;
+  padding: 20px;
+  text-align: center;
+  color: #6c757d;
+}
+.dropzone.dragover {
+  border-color: #007bff;
+  color: #007bff;
+}
+
+.button-row {
+  display: flex;
+  gap: 10px;
+}
+button {
+  padding: 10px 16px;
+  border-radius: 6px;
+  border: 1px solid #007bff;
+  background: #007bff;
+  color: #fff;
+  cursor: pointer;
+}
+button.secondary {
+  background: transparent;
+  color: #007bff;
+}
+
+.thumb-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  padding: 0;
+  list-style: none;
+}
+.thumb-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.thumb {
+  width: 140px;
+  height: 140px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+}
+.thumb-caption {
+  font-size: 0.9em;
+  color: #333;
+}

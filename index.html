@@ -10,52 +10,53 @@
 
   <!-- styles -->
   <link rel="stylesheet" href="styles/main.css">
-  <link rel="stylesheet" href="styles/header.css">
-  <link rel="stylesheet" href="styles/quotes.css">
   <link rel="stylesheet" href="styles/uploadSection.css">
+  <link rel="stylesheet" href="styles/app.css">
+
+  <!-- jsPDF local bundle for offline use -->
+  <script src="scripts/vendor/jspdf.umd.min.js"></script>
 
   <!-- favicon -->
   <link rel="icon" type="image/png" href="data/images/favicon.png">
-  <title>Uni-Convert Pro</title>
+  <title>Image → PDF</title>
 </head>
 <body>
   <header class="common-section common-header">
     <div class="common-container">
-      <div class="header-left"><a href="#" target="_blank" rel="noopener noreferrer">
-        Home
-      </a></div>
-      <div class="header-right">everything else</div>
+      <div class="header-left">Image to PDF</div>
+      <div class="header-right">Client-side conversion</div>
     </div>
   </header>
   
-  <div class="bg_img"><img src="data/images/to_pdf_logo.png" alt=""></div>
-  
-  <section class="common-section">
-    <div class="common-container quotes-section">
-      <div class="quote_container">
-        <h3 id="quote"></h3>
-        <h3 id="author"></h3>
-      </div>
-    </div>
-  </section>
-  
   <section class="common-section">
     <div class="common-container card">
-      <h2>1. Upload Files (.txt, .jpg, .jpeg, .png)</h2>
-      <input type="file" id="file-input" accept=".txt, .jpg, .jpeg, .png" multiple>
-      <p class="note">Select one or more text files and/or images. Each file will be placed sequentially in the PDF.</p>
+      <h2>1. Add Images</h2>
+      <input type="file" id="file-input" accept=".jpg,.jpeg,.png" multiple>
+      <div id="dropzone" class="dropzone">Drag & drop images here</div>
+      <p class="note">Supported: .jpg, .jpeg, .png</p>
     </div>
   </section>
   
   <section class="common-section">
     <div class="common-container card preview">
-      <h2>2. Uploaded Files List</h2>
-      <ul id="file-list">
-        <li>No files selected.</li>
+      <h2>2. Preview</h2>
+      <ul id="file-list" class="thumb-list">
+        <li>No images selected.</li>
       </ul>
     </div>
   </section>
 
+  <section class="common-section">
+    <div class="common-container card">
+      <h2>3. Convert & Download</h2>
+      <div class="button-row">
+        <button id="convert-btn">Convert to PDF</button>
+        <button id="clear-btn" class="secondary">Clear</button>
+      </div>
+      <p class="note">Images are scaled to fit A4 pages.</p>
+    </div>
+  </section>
+
 </body>
-<script type="module" src="scripts/quotes.js"></script>
+<script type="module" src="scripts/app.js"></script>
 </html>
