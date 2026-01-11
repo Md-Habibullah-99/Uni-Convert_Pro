@@ -3,44 +3,40 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
-
-  <!-- styles -->
   <link rel="stylesheet" href="styles/main.css">
   <link rel="stylesheet" href="styles/uploadSection.css">
   <link rel="stylesheet" href="styles/app.css">
-
-  <!-- favicon -->
   <link rel="icon" type="image/png" href="data/images/favicon.png">
-  <title>Uni Convert</title>
+  <title>Uni Convert — Download</title>
+  <script src="scripts/vendor/jspdf.umd.min.js"></script>
 </head>
 <body>
   <header class="common-section common-header">
     <div class="common-container">
       <div class="header-left">Uni Convert</div>
-      <div class="header-right">Redirecting to Upload…</div>
+      <div class="header-right">Download</div>
     </div>
   </header>
 
   <section class="common-section">
     <div class="common-container card">
-      <h2>Welcome</h2>
-      <p class="note">You will be redirected to the Upload page. If not, use the links below.</p>
-      <div class="button-row">
-        <a href="upload.html"><button>Go to Upload</button></a>
-        <a href="selected.html"><button class="secondary">Selected</button></a>
-        <a href="download.html"><button class="secondary">Download</button></a>
+      <h2>3. Convert & Download</h2>
+      <div class="button-row" style="margin-bottom:8px;">
+        <label for="filename-input">File name:</label>
+        <input id="filename-input" type="text" placeholder="uni-convert.pdf" style="max-width:240px;">
       </div>
+      <div class="button-row">
+        <button id="convert-btn">Convert to PDF</button>
+        <button id="clear-btn" class="secondary">Clear</button>
+        <button id="back-selected" class="secondary">Back to Selected</button>
+      </div>
+      <p class="note">Images and text are combined into a single A4 PDF.</p>
     </div>
   </section>
 
-  <script>
-    // Simple redirect to the upload page
-    window.location.replace('upload.html');
-  </script>
-
 </body>
+<script type="module" src="scripts/download.js"></script>
 </html>
