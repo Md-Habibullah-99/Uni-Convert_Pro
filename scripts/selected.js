@@ -16,6 +16,8 @@ function renderList() {
   files.forEach((f, idx) => {
     const li = document.createElement('li');
     li.className = 'thumb-item';
+    li.setAttribute('draggable', 'true');
+    li.dataset.index = String(idx);
     const caption = document.createElement('div');
     caption.className = 'thumb-caption';
     caption.textContent = `${idx + 1}. ${f.name}`;
@@ -68,6 +70,33 @@ function renderList() {
   });
   fileListEl.innerHTML = '';
   fileListEl.appendChild(frag);
+
+  // Drag & drop reordering
+  const items = Array.from(fileListEl.querySelectorAll('.thumb-item'));
+  items.forEach((item) => {
+    item.addEventListener('dragstart', (e) => {
+      const idx = Number(item.dataset.index || -1);
+      e.dataTransfer?.setData('text/plain', String(idx));
+    });
+    item.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      item.classList.add('drag-over');
+    });
+    item.addEventListener('dragleave', () => {
+      item.classList.remove('drag-over');
+    });
+    item.addEventListener('drop', (e) => {
+      e.preventDefault();
+      item.classList.remove('drag-over');
+      const fromIdxStr = e.dataTransfer?.getData('text/plain');
+      const fromIdx = Number(fromIdxStr);
+      const toIdx = Number(item.dataset.index || -1);
+      if (!Number.isNaN(fromIdx) && !Number.isNaN(toIdx) && fromIdx !== toIdx) {
+        moveItem(fromIdx, toIdx);
+        renderList();
+      }
+    });
+  });
 }
 
 backBtn?.addEventListener('click', () => {
