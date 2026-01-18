@@ -558,7 +558,7 @@ function updatePreview() {
 // Move item up in the list
 function moveItemUp(id) {
   const index = files.findIndex(f => f.id === id);
-  if (index > 0) {
+  if (index !== -1 && index > 0) {
     // Swap with previous item
     [files[index], files[index - 1]] = [files[index - 1], files[index]];
     updatePreview();
@@ -569,7 +569,7 @@ function moveItemUp(id) {
 // Move item down in the list
 function moveItemDown(id) {
   const index = files.findIndex(f => f.id === id);
-  if (index < files.length - 1) {
+  if (index !== -1 && index < files.length - 1) {
     // Swap with next item
     [files[index], files[index + 1]] = [files[index + 1], files[index]];
     updatePreview();
@@ -620,33 +620,51 @@ function updateStats() {
   totalFiles.textContent = totalFilesCount;
   totalSize.textContent = formatFileSize(originalTotalSize);
 
-  // Estimate compressed size
-  let estimatedTotalSize = 0;
-  files.forEach(file => {
-    if (file.type === 'image') {
-      // Estimate image compression
-      let compressionFactor = 0.5; // Default for balanced
-      if (settings.compressionMode === 'high') compressionFactor = 0.3;
-      if (settings.compressionMode === 'low') compressionFactor = 0.8;
-
-      // Apply quality setting
-      compressionFactor *= settings.quality;
-
-      estimatedTotalSize += file.size * compressionFactor;
-    } else {
-      // Text files add minimal size
-      estimatedTotalSize += file.size * 0.05; // Text compression is very efficient
-    }
-  });
-
-  // Add PDF overhead (about 20KB)
-  estimatedTotalSize += 20 * 1024;
-
-  estimatedPDF.textContent = formatFileSize(estimatedTotalSize);
-
-  // Calculate compression rate
-  const reduction = Math.max(0, 100 - (estimatedTotalSize / originalTotalSize * 100));
-  compressionRate.textContent = `${Math.round(reduction)}%`;
+  // If we already have a final PDF, show ACTUAL size
+  if (finalPdfBytes) {
+    const actualPdfSize = finalPdfBytes.byteLength;
+    estimatedPDF.textContent = formatFileSize(actualPdfSize);
+    const actualReduction = Math.max(0, 100 - (actualPdfSize / originalTotalSize * 100));
+    compressionRate.textContent = `${Math.round(actualReduction)}%`;
+  } else {
+    // Otherwise estimate based on settings
+    let estimatedTotalSize = 0;
+    files.forEach(file => {
+      if (file.type === 'image') {
+        // Better estimation based on actual compression settings
+        let estimatedCompressedSize = file.size;
+        
+        // Apply compression mode factor
+        let compressionFactor = 0.5; // balanced (50%)
+        if (settings.compressionMode === 'high') compressionFactor = 0.3; // 70% reduction
+        if (settings.compressionMode === 'low') compressionFactor = 0.7; // 30% reduction
+        
+        // Apply quality setting
+        compressionFactor *= settings.quality;
+        
+        // Apply resolution scaling if images will be downscaled
+        if (settings.optimizeImages && settings.maxWidth < 4000) {
+          // Estimate resolution reduction impact
+          const resolutionFactor = Math.min(1, (settings.maxWidth * settings.maxWidth) / (2000 * 2000));
+          compressionFactor *= resolutionFactor;
+        }
+        
+        estimatedTotalSize += file.size * compressionFactor;
+      } else {
+        // Text files - minimal PDF overhead for text
+        estimatedTotalSize += Math.min(file.size * 0.05, file.size + 1024); // Minimal size
+      }
+    });
+    
+    // Add PDF overhead (based on number of pages)
+    estimatedTotalSize += files.length * 2048; // 2KB per page overhead
+    
+    estimatedPDF.textContent = formatFileSize(estimatedTotalSize);
+    
+    // Calculate estimated compression rate
+    const estimatedReduction = Math.max(0, 100 - (estimatedTotalSize / originalTotalSize * 100));
+    compressionRate.textContent = `${Math.round(estimatedReduction)}%`;
+  }
 }
 
 // Update size estimate
@@ -660,18 +678,16 @@ function updateSizeEstimate() {
   updateStats();
 }
 
-// Image compression function
-async function compressImage(file, maxSize = null, quality = null) {
+// ========== FIXED COMPRESSION LOGIC ==========
+
+// Image compression function (from your working code)
+async function compressImage(file, maxSize = 2000, quality = 0.75) {
   const img = new Image();
   img.src = URL.createObjectURL(file);
   await img.decode();
 
   let { width, height } = img;
-  const maxWidth = maxSize || settings.maxWidth;
-  const qualityLevel = quality || settings.quality;
-
-  // Calculate scale to fit within max dimensions
-  const scale = Math.min(1, maxWidth / Math.max(width, height));
+  const scale = Math.min(1, maxSize / Math.max(width, height));
 
   width = Math.round(width * scale);
   height = Math.round(height * scale);
@@ -681,25 +697,17 @@ async function compressImage(file, maxSize = null, quality = null) {
   canvas.height = height;
 
   const ctx = canvas.getContext("2d");
-
-  // Apply compression settings
-  if (settings.compressionMode === 'high') {
-    // For high compression, use lower quality and faster drawing
-    ctx.imageSmoothingEnabled = false;
-    ctx.imageSmoothingQuality = 'low';
-  }
-
   ctx.drawImage(img, 0, 0, width, height);
 
   const blob = await new Promise(resolve =>
-    canvas.toBlob(resolve, "image/jpeg", qualityLevel)
+    canvas.toBlob(resolve, "image/jpeg", quality)
   );
 
   URL.revokeObjectURL(img.src);
   return await blob.arrayBuffer();
 }
 
-// Convert files to PDF with compression
+// Convert files to PDF with compression 
 async function convertToPDF() {
   if (files.length === 0) {
     alert('Please add at least one file to convert.');
@@ -719,12 +727,9 @@ async function convertToPDF() {
     // Create PDF document
     const pdfDoc = await PDFLib.PDFDocument.create();
     const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
-    const fontBold = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
 
-    // Determine page size
-    const pageSize = settings.pageSize === 'a4' ? [595.28, 841.89] : [612, 792];
-    const isLandscape = settings.orientation === 'landscape';
-    const [pageWidth, pageHeight] = isLandscape ? [pageSize[1], pageSize[0]] : pageSize;
+    // Track actual compression results
+    let totalCompressedSize = 0;
 
     // Process each file
     for (let i = 0; i < files.length; i++) {
@@ -735,86 +740,100 @@ async function convertToPDF() {
       loadingText.textContent = `Processing file ${i + 1} of ${files.length}`;
       loadingDetail.textContent = `Compressing: ${fileData.name}`;
 
-      // Update progress every few files to keep UI responsive
-      if (i % 2 === 0) {
-        await new Promise(resolve => setTimeout(resolve, 10));
-      }
+      // Give browser time to breathe between files
+      await new Promise(resolve => setTimeout(resolve, 10));
 
       if (fileData.type === 'image') {
-        // Compress image
-        let imageBytes;
+        // ✅ FIXED COMPRESSION - Actually compress images
+        let compressedBytes;
+        let imageBlob;
 
         if (settings.optimizeImages) {
           // Adjust quality based on compression mode
           let quality = settings.quality;
-          if (settings.compressionMode === 'high') quality *= 0.6;
-          if (settings.compressionMode === 'low') quality = Math.min(quality * 1.2, 1);
+          let maxWidth = settings.maxWidth;
+          
+          // Apply compression mode adjustments
+          if (settings.compressionMode === 'high') {
+            quality *= 0.6; // More aggressive quality reduction
+            maxWidth = Math.min(maxWidth, 1200); // Lower max width for high compression
+          } else if (settings.compressionMode === 'low') {
+            quality = Math.min(quality * 1.2, 1); // Higher quality for low compression
+          }
 
-          imageBytes = await compressImage(fileData.file, settings.maxWidth, quality);
+          console.log(`Compressing ${fileData.name}: quality=${quality}, maxWidth=${maxWidth}`);
+
+          // Actually compress the image
+          const compressedBlob = await compressImageToBlob(fileData.file, maxWidth, quality);
+          imageBlob = compressedBlob;
+          compressedBytes = await compressedBlob.arrayBuffer();
+          
+          // Track compressed size
+          const compressedSize = compressedBlob.size;
+          totalCompressedSize += compressedSize;
+          
+          console.log(`Original: ${formatFileSize(fileData.size)}, Compressed: ${formatFileSize(compressedSize)}`);
+          
+          // Update file data with actual compressed size
+          fileData.compressed = true;
+          fileData.compressedSize = compressedSize;
         } else {
-          // Use original image
-          imageBytes = await fileData.file.arrayBuffer();
+          // No compression - use original
+          compressedBytes = await fileData.file.arrayBuffer();
+          totalCompressedSize += fileData.size;
+          console.log(`No compression for ${fileData.name}: ${formatFileSize(fileData.size)}`);
         }
 
-        // Embed image in PDF
+        // Embed image
         let image;
         try {
-          // Try JPEG first
-          image = await pdfDoc.embedJpg(imageBytes);
+          // Try JPEG first (most compressed)
+          if (settings.optimizeImages) {
+            image = await pdfDoc.embedJpg(compressedBytes);
+          } else {
+            // Check file type for non-optimized
+            if (fileData.file.type === 'image/jpeg' || fileData.file.type === 'image/jpg') {
+              image = await pdfDoc.embedJpg(compressedBytes);
+            } else {
+              image = await pdfDoc.embedPng(compressedBytes);
+            }
+          }
         } catch (e) {
-          // If JPEG fails, try PNG
+          console.log(`JPEG embedding failed, trying PNG: ${e.message}`);
           try {
-            image = await pdfDoc.embedPng(imageBytes);
+            image = await pdfDoc.embedPng(compressedBytes);
           } catch (e2) {
             console.error("Failed to embed image:", e2);
-            // Add placeholder text instead
-            addTextPage(pdfDoc, font, fontBold, pageWidth, pageHeight,
-              `[Image: ${fileData.name} - Could not be processed]`);
+            // Add placeholder text
+            await addTextToPDF(pdfDoc, font, `[Image: ${fileData.name} - Could not be processed]`);
             continue;
           }
         }
 
-        // Add page with image
+        // Determine page size based on settings
+        const pageSize = settings.pageSize === 'a4' ? [595.28, 841.89] : [612, 792];
+        const isLandscape = settings.orientation === 'landscape';
+        const [pageWidth, pageHeight] = isLandscape ? [pageSize[1], pageSize[0]] : pageSize;
+
         const page = pdfDoc.addPage([pageWidth, pageHeight]);
+        const { width, height } = page.getSize();
 
-        // Calculate image dimensions based on fit mode
-        let imgWidth, imgHeight, x, y;
-
-        const imgAspect = image.width / image.height;
-        const pageAspect = pageWidth / pageHeight;
-
+        // Calculate scaling
+        let scale;
         if (settings.imageFit === 'fill') {
-          // Fill page (may crop)
-          if (imgAspect > pageAspect) {
-            // Image is wider than page
-            imgHeight = pageHeight;
-            imgWidth = imgHeight * imgAspect;
-            x = (pageWidth - imgWidth) / 2;
-            y = 0;
-          } else {
-            // Image is taller than page
-            imgWidth = pageWidth;
-            imgHeight = imgWidth / imgAspect;
-            x = 0;
-            y = (pageHeight - imgHeight) / 2;
-          }
+          scale = Math.max(width / image.width, height / image.height);
         } else if (settings.imageFit === 'original') {
-          // Original size
-          const scale = 72 / 96; // Convert pixels to points
-          imgWidth = image.width * scale;
-          imgHeight = image.height * scale;
-          x = (pageWidth - imgWidth) / 2;
-          y = (pageHeight - imgHeight) / 2;
+          const pointsPerPixel = 72 / 96;
+          scale = pointsPerPixel;
         } else {
-          // Fit to page (default)
-          const scale = Math.min(pageWidth / image.width, pageHeight / image.height);
-          imgWidth = image.width * scale;
-          imgHeight = image.height * scale;
-          x = (pageWidth - imgWidth) / 2;
-          y = (pageHeight - imgHeight) / 2;
+          scale = Math.min(width / image.width, height / image.height);
         }
 
-        // Draw image on page
+        const imgWidth = image.width * scale;
+        const imgHeight = image.height * scale;
+        const x = (width - imgWidth) / 2;
+        const y = (height - imgHeight) / 2;
+
         page.drawImage(image, {
           x,
           y,
@@ -822,13 +841,13 @@ async function convertToPDF() {
           height: imgHeight
         });
 
-        // Add file name if enabled
+        // Add file name header if enabled
         if (settings.fileHeaders) {
           page.drawText(fileData.name, {
             x: 20,
-            y: pageHeight - 20,
+            y: height - 20,
             size: 10,
-            font: fontBold,
+            font,
             color: PDFLib.rgb(0.3, 0.3, 0.3)
           });
         }
@@ -836,45 +855,41 @@ async function convertToPDF() {
       } else {
         // Process text file
         const text = await readFileAsText(fileData.file);
+        totalCompressedSize += fileData.size; // Text files don't compress much
 
-        // Split text into lines
+        // Determine page size
+        const pageSize = settings.pageSize === 'a4' ? [595.28, 841.89] : [612, 792];
+        const isLandscape = settings.orientation === 'landscape';
+        const [pageWidth, pageHeight] = isLandscape ? [pageSize[1], pageSize[0]] : pageSize;
+
         const lines = text.split("\n");
-        let currentPage = pdfDoc.addPage([pageWidth, pageHeight]);
+        let page = pdfDoc.addPage([pageWidth, pageHeight]);
         let y = pageHeight - 40;
-        let lineIndex = 0;
 
         // Add file name header if enabled
         if (settings.fileHeaders) {
-          currentPage.drawText(fileData.name, {
+          page.drawText(fileData.name, {
             x: 20,
             y: pageHeight - 20,
             size: 12,
-            font: fontBold,
+            font,
             color: PDFLib.rgb(0.2, 0.2, 0.2)
           });
           y -= 20;
         }
 
-        while (lineIndex < lines.length) {
-          const line = lines[lineIndex];
-
-          // Check if we need a new page
+        for (const line of lines) {
           if (y < 40) {
-            currentPage = pdfDoc.addPage([pageWidth, pageHeight]);
+            page = pdfDoc.addPage([pageWidth, pageHeight]);
             y = pageHeight - 40;
           }
-
-          // Draw line
-          currentPage.drawText(line, {
+          page.drawText(line, {
             x: 40,
             y,
             size: settings.fontSize,
-            font,
-            color: PDFLib.rgb(0, 0, 0)
+            font
           });
-
-          y -= (settings.fontSize * 1.2);
-          lineIndex++;
+          y -= 14;
         }
       }
     }
@@ -901,15 +916,21 @@ async function convertToPDF() {
 
     // Save PDF
     finalPdfBytes = await pdfDoc.save();
-
+    const finalPdfSize = finalPdfBytes.byteLength;
+    
     // Create download link
     const pdfBlob = new Blob([finalPdfBytes], { type: "application/pdf" });
     const pdfUrl = URL.createObjectURL(pdfBlob);
 
     // Show final file size
-    const finalSize = formatFileSize(pdfBlob.size);
+    const finalSize = formatFileSize(finalPdfSize);
+    
+    // Calculate actual compression
+    const originalTotalSize = files.reduce((sum, f) => sum + f.size, 0);
+    const actualReduction = Math.max(0, 100 - (finalPdfSize / originalTotalSize * 100));
+    
     loadingText.innerHTML = `Conversion complete!`;
-    loadingDetail.innerHTML = `Final PDF size: <strong>${finalSize}</strong>`;
+    loadingDetail.innerHTML = `Final PDF size: <strong>${finalSize}</strong> (${Math.round(actualReduction)}% reduction)`;
 
     // Update download button
     downloadBtn.href = pdfUrl;
@@ -917,10 +938,7 @@ async function convertToPDF() {
     downloadBtn.download = `compressed_document_${Date.now()}.pdf`;
 
     // Update stats with actual size
-    const originalTotalSize = files.reduce((sum, f) => sum + f.size, 0);
-    const actualReduction = Math.max(0, 100 - (pdfBlob.size / originalTotalSize * 100));
-    compressionRate.textContent = `${Math.round(actualReduction)}%`;
-    estimatedPDF.textContent = finalSize;
+    updateStats();
 
     // Scroll to download button
     setTimeout(() => {
@@ -943,8 +961,58 @@ async function convertToPDF() {
   }
 }
 
-// Helper function to add a text page
-function addTextPage(pdfDoc, font, fontBold, pageWidth, pageHeight, text) {
+// Improved image compression function that returns Blob
+async function compressImageToBlob(file, maxWidth = 1600, quality = 0.75) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.src = URL.createObjectURL(file);
+    
+    img.onload = () => {
+      URL.revokeObjectURL(img.src);
+      
+      // Calculate new dimensions
+      let width = img.width;
+      let height = img.height;
+      
+      if (width > maxWidth || height > maxWidth) {
+        const scale = maxWidth / Math.max(width, height);
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+      }
+      
+      // Create canvas
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      
+      // Draw and compress
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      
+      // Convert to JPEG (better compression than PNG)
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            resolve(blob);
+          } else {
+            reject(new Error('Canvas to Blob conversion failed'));
+          }
+        },
+        'image/jpeg',
+        quality
+      );
+    };
+    
+    img.onerror = reject;
+  });
+}
+
+// Helper function to add text to PDF
+async function addTextToPDF(pdfDoc, font, text) {
+  const pageSize = settings.pageSize === 'a4' ? [595.28, 841.89] : [612, 792];
+  const isLandscape = settings.orientation === 'landscape';
+  const [pageWidth, pageHeight] = isLandscape ? [pageSize[1], pageSize[0]] : pageSize;
+
   const page = pdfDoc.addPage([pageWidth, pageHeight]);
   page.drawText(text, {
     x: 40,
