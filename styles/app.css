@@ -147,3 +147,34 @@ button.secondary {
   background: transparent;
   color: #007bff;
 }
+
+/* Conversion progress */
+.progress-container {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  height: 14px;
+  border: 1px solid #e0e0e0;
+  border-radius: 7px;
+  background: #f5f5f5;
+  margin-top: 12px;
+  display: none; /* shown during conversion */
+}
+.progress-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 0%;
+  background: #007bff;
+  border-radius: 7px;
+  transition: width 0.2s ease-in-out;
+}
+.progress-label {
+  position: absolute;
+  width: 100%;
+  text-align: center;
+  font-size: 12px;
+  line-height: 14px;
+  color: #333;
+}

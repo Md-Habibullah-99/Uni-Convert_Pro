@@ -69,6 +69,8 @@ self.onmessage = async (e) => {
 
     const pdfDoc = await PDFDocument.create();
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const total = Array.isArray(items) ? items.length : 0;
+    let processed = 0;
 
     for (const it of items) {
       if (it.kind === 'image') {
@@ -87,6 +89,8 @@ self.onmessage = async (e) => {
         const page = pdfDoc.addPage([A4_WIDTH, A4_HEIGHT]);
         const placement = computePlacement(width, height, A4_WIDTH, A4_HEIGHT, margin);
         page.drawImage(jpg, { x: placement.x, y: placement.y, width: placement.drawW, height: placement.drawH });
+        processed++;
+        self.postMessage({ type: 'progress', current: processed, total });
       } else if (it.kind === 'text') {
         const text = it.text ?? (it.blob ? await it.blob.text() : '');
         let page = pdfDoc.addPage([A4_WIDTH, A4_HEIGHT]);
@@ -105,6 +109,8 @@ self.onmessage = async (e) => {
           page.drawText(l, { x, y, size: fontSize, font });
           y -= lineHeight;
         }
+        processed++;
+        self.postMessage({ type: 'progress', current: processed, total });
       }
     }
 

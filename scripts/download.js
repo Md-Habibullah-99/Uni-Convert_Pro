@@ -13,6 +13,26 @@ function getWorker() {
   return worker;
 }
 
+const progressContainer = document.getElementById('convert-progress');
+const progressBar = document.getElementById('progress-bar');
+const progressLabel = document.getElementById('progress-label');
+
+function showProgress(show) {
+  if (!progressContainer) return;
+  progressContainer.style.display = show ? 'block' : 'none';
+  if (show && progressBar && progressLabel) {
+    progressBar.style.width = '0%';
+    progressLabel.textContent = '0%';
+  }
+}
+
+function updateProgress(current, total) {
+  if (!progressBar || !progressLabel) return;
+  const pct = total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0;
+  progressBar.style.width = pct + '%';
+  progressLabel.textContent = pct + '%';
+}
+
 async function convert() {
   const files = await getFiles();
   if (!files.length) {
@@ -31,9 +51,23 @@ async function convert() {
   const fileName = sanitizeName(nameInput && 'value' in nameInput ? /** @type {HTMLInputElement} */(nameInput).value : 'converted.pdf');
   const w = getWorker();
   const options = { quality: 0.7, maxDim: 2000, margin: 24 };
+  showProgress(true);
   const result = await new Promise((resolve) => {
-    const onMessage = (evt) => { w.removeEventListener('message', onMessage); resolve(evt.data); };
-    const onMessageError = (evt) => { w.removeEventListener('messageerror', onMessageError); resolve({ ok: false, error: 'Worker message error' }); };
+    const onMessage = (evt) => {
+      const data = evt.data;
+      if (data && data.type === 'progress') {
+        updateProgress(data.current, data.total);
+        return;
+      }
+      w.removeEventListener('message', onMessage);
+      w.removeEventListener('messageerror', onMessageError);
+      resolve(data);
+    };
+    const onMessageError = () => {
+      w.removeEventListener('message', onMessage);
+      w.removeEventListener('messageerror', onMessageError);
+      resolve({ ok: false, error: 'Worker message error' });
+    };
     w.addEventListener('message', onMessage);
     w.addEventListener('messageerror', onMessageError);
     w.postMessage({ items, options });
@@ -41,6 +75,7 @@ async function convert() {
   if (!result?.ok) {
     console.error('Worker error:', result?.error);
     alert(`Conversion failed: ${result?.error || 'Unknown error'}`);
+    showProgress(false);
     return;
   }
   const pdfBuffer = result.pdfBuffer;
@@ -53,6 +88,7 @@ async function convert() {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+  showProgress(false);
 }
 
 const convertBtn = document.getElementById('convert-btn');
