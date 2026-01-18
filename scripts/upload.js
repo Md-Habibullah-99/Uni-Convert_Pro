@@ -4,8 +4,10 @@ import { addFiles, getFiles } from './idbState.js';
 
 const fileInput = document.getElementById('file-input');
 const dropzone = document.getElementById('dropzone');
-const fileListEl = document.getElementById('file-list');
-const viewBtn = document.getElementById('view-selected');
+// Optional: if present, shows quick previews on the upload page.
+const fileListEl = document.getElementById('upload-preview-list');
+// No 'view-selected' button in single-page layout
+const viewBtn = null;
 
 /** @type {Map<number,{url:string,revoke:()=>void}>} */
 const thumbMap = new Map();
@@ -13,6 +15,7 @@ const thumbMap = new Map();
 function isImageType(type) { return /^image\/(png|jpe?g)$/i.test(type); }
 
 async function renderPreviews() {
+  if (!fileListEl) return; // Upload page doesn't show previews anymore
   const memoryState = await getFiles();
   if (!memoryState.length) {
     fileListEl.innerHTML = '<li>No files added yet.</li>';
@@ -54,13 +57,16 @@ async function renderPreviews() {
     li.appendChild(caption);
     frag.appendChild(li);
   }
-  fileListEl.innerHTML = '';
-  fileListEl.appendChild(frag);
+  if (fileListEl) {
+    fileListEl.innerHTML = '';
+    fileListEl.appendChild(frag);
+  }
 }
 
 async function onFilesChosen(list) {
   await addFiles(list);
   renderPreviews();
+  document.dispatchEvent(new CustomEvent('files-updated'));
 }
 
 fileInput?.addEventListener('change', (e) => {
@@ -86,9 +92,7 @@ dropzone?.addEventListener('drop', (e) => {
   if (dt?.files) onFilesChosen(dt.files);
 });
 
-viewBtn?.addEventListener('click', () => {
-  window.location.href = 'selected.html';
-});
+// Removed scroll button for single-page layout
 
-// initial
+// initial (noop if preview list not present)
 renderPreviews();

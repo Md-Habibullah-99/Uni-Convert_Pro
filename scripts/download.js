@@ -93,7 +93,8 @@ async function convert() {
 
 const convertBtn = document.getElementById('convert-btn');
 const clearBtn = document.getElementById('clear-btn');
-const backBtn = document.getElementById('back-selected');
+// No 'back-upload' button in single-page layout
+const backBtn = null;
 
 convertBtn?.addEventListener('click', convert);
 function showTooltipNear(el, text) {
@@ -117,7 +118,6 @@ function showTooltipNear(el, text) {
 clearBtn?.addEventListener('click', async () => {
   await clearFiles();
   showTooltipNear(clearBtn, 'Cleared');
+  document.dispatchEvent(new CustomEvent('files-updated'));
 });
-backBtn?.addEventListener('click', () => {
-  window.location.href = 'selected.html';
-});
+// Removed back button handler for single-page layout

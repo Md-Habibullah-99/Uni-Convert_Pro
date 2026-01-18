@@ -101,11 +101,16 @@ async function renderList() {
 }
 
 backBtn?.addEventListener('click', () => {
-  window.location.href = 'upload.html';
+  if (window.showSection) window.showSection('upload');
 });
 
 toDownloadBtn?.addEventListener('click', () => {
-  window.location.href = 'download.html';
+  if (window.showSection) window.showSection('convert');
 });
 
 renderList();
+
+// Re-render when files change elsewhere (e.g., after upload/clear)
+document.addEventListener('files-updated', () => {
+  renderList();
+});

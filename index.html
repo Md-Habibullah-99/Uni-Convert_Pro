@@ -15,41 +15,60 @@
 
   <!-- favicon -->
   <link rel="icon" type="image/png" href="data/images/favicon.png">
-  <title>Uni Convert</title>
+  <title>Uni Convert — Single Page</title>
 </head>
 <body>
   <header class="common-section common-header">
     <div class="common-container">
-      <a href="upload.html"><div class="header-left">Uni Convert</div></a>
+      <div class="header-left">Uni Convert</div>
       <div class="header-right"><a class="about-btn secondary" href="about.html">About</a></div>
     </div>
   </header>
 
-  <section class="common-section">
+  <!-- Upload Section (always visible) -->
+  <section id="section-upload" class="common-section">
     <div class="common-container card">
-      <h2>Welcome</h2>
-      <p class="note">You will be redirected to the Upload page. If not, use the links below.</p>
-      <div class="button-row">
-        <a href="upload.html"><button>Go to Upload</button></a>
-        <a href="selected.html"><button class="secondary">Selected</button></a>
-        <a href="download.html"><button class="secondary">Download</button></a>
-      </div>
+      <h2>1. Add Files</h2>
+      <input type="file" id="file-input" accept=".jpg,.jpeg,.png,.txt" multiple>
+      <div id="dropzone" class="dropzone">Drag & drop images or .txt here</div>
+      <p class="note">Supported: .jpg, .jpeg, .png, .txt</p>
+      
     </div>
   </section>
 
-  <footer class="page-footer">
-    <div class="common-container nav-links">
-      <a href="upload.html" class="active">Upload</a>
-      <a href="selected.html">Selected</a>
-      <a href="download.html">Download</a>
+  <!-- Convert Section (Selected + Download combined, always visible) -->
+  <section id="section-convert" class="common-section">
+    <div class="common-container card preview">
+      <h2>Files Selected</h2>
+      <ul id="file-list" class="thumb-list">
+        <li>No files selected.</li>
+      </ul>
+      
     </div>
-  </footer>
-  <script src="scripts/ui.js"></script>
+    <div class="common-container card">
+      <h2>2. Convert & Download</h2>
+      <div class="button-row" style="margin-bottom:8px;">
+        <label for="filename-input">File name:</label>
+        <input id="filename-input" type="text" placeholder="uni-convert.pdf" style="max-width:240px;">
+      </div>
+      <div class="button-row">
+        <button id="convert-btn">Convert to PDF</button>
+        <button id="clear-btn" class="secondary">Clear</button>
+      </div>
+      <div id="convert-progress" class="progress-container" aria-hidden="true">
+        <div class="progress-bar" id="progress-bar"></div>
+        <div class="progress-label" id="progress-label">0%</div>
+      </div>
+      <p class="note">Images and text are combined into a single A4 PDF.</p>
+    </div>
+  </section>
 
-  <script>
-    // Simple redirect to the upload page
-    window.location.replace('upload.html');
-  </script>
+  <!-- Single page layout: no footer navigation or router script -->
+
+  <!-- Modules for each section -->
+  <script type="module" src="scripts/upload.js"></script>
+  <script type="module" src="scripts/selected.js"></script>
+  <script type="module" src="scripts/download.js"></script>
 
 </body>
 </html>
