@@ -64,6 +64,16 @@ function init() {
   document.getElementById('pageSize').addEventListener('change', updatePageSize);
   document.getElementById('optimizeImages').addEventListener('change', updateOptimizeImages);
   document.getElementById('fontSize').addEventListener('change', updateFontSize);
+  // Layout/settings wiring
+  const pageNumbersEl = document.getElementById('addPageNumbers');
+  const fileHeadersEl = document.getElementById('addFileNameHeaders');
+  const pageOrientationEl = document.getElementById('pageOrientation');
+  const imageFitEl = document.getElementById('imageFit');
+
+  if (pageNumbersEl) pageNumbersEl.addEventListener('change', updatePageNumbers);
+  if (fileHeadersEl) fileHeadersEl.addEventListener('change', updateFileHeaders);
+  if (pageOrientationEl) pageOrientationEl.addEventListener('change', updatePageOrientation);
+  if (imageFitEl) imageFitEl.addEventListener('change', updateImageFit);
 
   // Tab event listeners
   document.getElementById('compressionTab').addEventListener('click', () => switchTab('compression'));
@@ -138,6 +148,14 @@ function loadSettings() {
     document.getElementById('pageSize').value = settings.pageSize;
     document.getElementById('optimizeImages').checked = settings.optimizeImages;
     document.getElementById('fontSize').value = settings.fontSize;
+    const pageNumbersEl = document.getElementById('addPageNumbers');
+    const fileHeadersEl = document.getElementById('addFileNameHeaders');
+    const pageOrientationEl = document.getElementById('pageOrientation');
+    const imageFitEl = document.getElementById('imageFit');
+    if (pageNumbersEl) pageNumbersEl.checked = !!settings.pageNumbers;
+    if (fileHeadersEl) fileHeadersEl.checked = !!settings.fileHeaders;
+    if (pageOrientationEl) pageOrientationEl.value = settings.orientation || 'portrait';
+    if (imageFitEl) imageFitEl.value = settings.imageFit || 'fit';
 
     updateQuality();
     updateMaxWidth();
@@ -217,6 +235,42 @@ function updateOptimizeImages() {
   settings.optimizeImages = document.getElementById('optimizeImages').checked;
   updateSizeEstimate();
   saveSettings();
+}
+
+// Update page numbers setting
+function updatePageNumbers() {
+  const el = document.getElementById('addPageNumbers');
+  if (el) {
+    settings.pageNumbers = el.checked;
+    saveSettings();
+  }
+}
+
+// Update file headers setting
+function updateFileHeaders() {
+  const el = document.getElementById('addFileNameHeaders');
+  if (el) {
+    settings.fileHeaders = el.checked;
+    saveSettings();
+  }
+}
+
+// Update page orientation setting
+function updatePageOrientation() {
+  const el = document.getElementById('pageOrientation');
+  if (el) {
+    settings.orientation = el.value;
+    saveSettings();
+  }
+}
+
+// Update image fit setting
+function updateImageFit() {
+  const el = document.getElementById('imageFit');
+  if (el) {
+    settings.imageFit = el.value;
+    saveSettings();
+  }
 }
 
 // Update font size
