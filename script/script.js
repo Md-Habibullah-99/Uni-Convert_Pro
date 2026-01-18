@@ -989,7 +989,7 @@ async function convertToPDF() {
     // Update download button
     downloadBtn.href = pdfUrl;
     downloadBtn.style.display = 'flex';
-    downloadBtn.download = `compressed_document_${Date.now()}.pdf`;
+    downloadBtn.download = `converted_document_${Date.now()}.pdf`;
 
     // Update stats with actual size
     updateStats();
