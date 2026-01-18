@@ -1,8 +1,7 @@
 import { getFiles, removeAt, moveItem } from './idbState.js';
 
 const fileListEl = document.getElementById('file-list');
-const backBtn = document.getElementById('back-upload');
-const toDownloadBtn = document.getElementById('to-download');
+// Single-page layout: no nav buttons here
 
 function isImageType(type) { return /^image\/(png|jpe?g)$/i.test(type); }
 
@@ -37,37 +36,20 @@ async function renderList() {
       li.appendChild(icon);
     }
 
-    const controls = document.createElement('div');
-    controls.className = 'button-row';
-    const upBtn = document.createElement('button');
-    upBtn.className = 'secondary';
-    upBtn.textContent = '↑ Up';
-    upBtn.disabled = idx === 0;
-    upBtn.addEventListener('click', () => {
-      moveItem(idx, idx - 1);
-      renderList();
-    });
-    const downBtn = document.createElement('button');
-    downBtn.className = 'secondary';
-    downBtn.textContent = '↓ Down';
-    downBtn.disabled = idx === files.length - 1;
-    downBtn.addEventListener('click', () => {
-      moveItem(idx, idx + 1);
-      renderList();
-    });
-    const removeBtn = document.createElement('button');
-    removeBtn.className = 'secondary';
-    removeBtn.textContent = 'Remove';
-    removeBtn.addEventListener('click', async () => {
+    // Hover remove cross
+    const removeCross = document.createElement('div');
+    removeCross.className = 'remove-cross';
+    removeCross.setAttribute('role','button');
+    removeCross.setAttribute('aria-label','Remove');
+    removeCross.textContent = '×';
+    removeCross.addEventListener('click', async (e) => {
+      e.stopPropagation();
       await removeAt(idx);
       renderList();
     });
 
     li.appendChild(caption);
-    controls.appendChild(upBtn);
-    controls.appendChild(downBtn);
-    controls.appendChild(removeBtn);
-    li.appendChild(controls);
+    li.appendChild(removeCross);
     frag.appendChild(li);
   });
   fileListEl.innerHTML = '';
@@ -99,14 +81,6 @@ async function renderList() {
     });
   });
 }
-
-backBtn?.addEventListener('click', () => {
-  if (window.showSection) window.showSection('upload');
-});
-
-toDownloadBtn?.addEventListener('click', () => {
-  if (window.showSection) window.showSection('convert');
-});
 
 renderList();
 

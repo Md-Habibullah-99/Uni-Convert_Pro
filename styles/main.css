@@ -26,8 +26,8 @@ h2 {
 
 .common-section {
   display: flex;
-  flex-direction: row;
-  justify-content: center;
+  flex-direction: column; /* stack vertically */
+  align-items: center;
   padding-top: 16px;
   padding-bottom: 16px;
 }
