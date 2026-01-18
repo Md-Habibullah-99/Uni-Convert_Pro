@@ -9,7 +9,7 @@ function sanitizeName(name) {
 
 let worker;
 function getWorker() {
-  if (!worker) worker = new Worker('scripts/pdfWorker.js');
+  if (!worker) worker = new Worker('scripts/pdfWorker.js', { type: 'module' });
   return worker;
 }
 
@@ -30,15 +30,17 @@ async function convert() {
   const nameInput = document.getElementById('filename-input');
   const fileName = sanitizeName(nameInput && 'value' in nameInput ? /** @type {HTMLInputElement} */(nameInput).value : 'converted.pdf');
   const w = getWorker();
-  const options = { quality: 0.8, maxDim: 2000, margin: 24 };
+  const options = { quality: 0.7, maxDim: 2000, margin: 24 };
   const result = await new Promise((resolve) => {
     const onMessage = (evt) => { w.removeEventListener('message', onMessage); resolve(evt.data); };
+    const onMessageError = (evt) => { w.removeEventListener('messageerror', onMessageError); resolve({ ok: false, error: 'Worker message error' }); };
     w.addEventListener('message', onMessage);
+    w.addEventListener('messageerror', onMessageError);
     w.postMessage({ items, options });
   });
   if (!result?.ok) {
     console.error('Worker error:', result?.error);
-    alert('Conversion failed.');
+    alert(`Conversion failed: ${result?.error || 'Unknown error'}`);
     return;
   }
   const pdfBuffer = result.pdfBuffer;
