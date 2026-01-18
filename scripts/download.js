@@ -1,16 +1,10 @@
-import { getFiles, clearFiles } from './state.js';
+import { getFiles, clearFiles } from './idbState.js';
 
 function sanitizeName(name) {
   if (!name) return 'converted.pdf';
   let n = name.trim();
   if (!n.toLowerCase().endsWith('.pdf')) n += '.pdf';
   return n.replace(/[\\/:*?"<>|]+/g, '_');
-}
-
-async function dataUrlToArrayBuffer(dataUrl) {
-  const res = await fetch(dataUrl);
-  const blob = await res.blob();
-  return blob.arrayBuffer();
 }
 
 let worker;
@@ -20,20 +14,17 @@ function getWorker() {
 }
 
 async function convert() {
-  const files = getFiles();
+  const files = await getFiles();
   if (!files.length) {
     alert('No files selected.');
     return;
   }
   const items = [];
-  const transfers = [];
   for (const f of files) {
-    if (f.kind === 'image' && f.dataUrl) {
-      const buf = await dataUrlToArrayBuffer(f.dataUrl);
-      items.push({ kind: 'image', name: f.name, type: f.type, buffer: buf });
-      transfers.push(buf);
-    } else if (f.kind === 'text' && f.text) {
-      items.push({ kind: 'text', name: f.name, text: f.text });
+    if (f.kind === 'image' && f.blob) {
+      items.push({ kind: 'image', name: f.name, type: f.type, blob: f.blob });
+    } else if (f.kind === 'text' && f.blob) {
+      items.push({ kind: 'text', name: f.name, blob: f.blob });
     }
   }
   const nameInput = document.getElementById('filename-input');
@@ -43,7 +34,7 @@ async function convert() {
   const result = await new Promise((resolve) => {
     const onMessage = (evt) => { w.removeEventListener('message', onMessage); resolve(evt.data); };
     w.addEventListener('message', onMessage);
-    w.postMessage({ items, options }, transfers);
+    w.postMessage({ items, options });
   });
   if (!result?.ok) {
     console.error('Worker error:', result?.error);

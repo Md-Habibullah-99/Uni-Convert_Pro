@@ -1,49 +1,66 @@
-import { addFiles, getFiles } from './state.js';
+// Memory-first previews: persist original File objects in IndexedDB and render thumbnails
+import { generateThumbnail } from './thumbnail.js';
+import { addFiles, getFiles } from './idbState.js';
 
 const fileInput = document.getElementById('file-input');
 const dropzone = document.getElementById('dropzone');
 const fileListEl = document.getElementById('file-list');
 const viewBtn = document.getElementById('view-selected');
 
+/** @type {Map<number,{url:string,revoke:()=>void}>} */
+const thumbMap = new Map();
+
 function isImageType(type) { return /^image\/(png|jpe?g)$/i.test(type); }
 
-function renderList() {
-  const files = getFiles();
-  if (!files.length) {
+async function renderPreviews() {
+  const memoryState = await getFiles();
+  if (!memoryState.length) {
     fileListEl.innerHTML = '<li>No files added yet.</li>';
     return;
   }
   const frag = document.createDocumentFragment();
-  files.forEach((f, idx) => {
+  for (let i = 0; i < memoryState.length; i++) {
+    const f = memoryState[i];
     const li = document.createElement('li');
     li.className = 'thumb-item';
     const caption = document.createElement('div');
     caption.className = 'thumb-caption';
-    caption.textContent = `${idx + 1}. ${f.name}`;
+    caption.textContent = `${i + 1}. ${f.name}`;
 
-    if (f.kind === 'image' && isImageType(f.type)) {
+    if (f.kind === 'image') {
+      let entry = thumbMap.get(f.id);
+      if (!entry) {
+        try {
+          const { url, revoke } = await generateThumbnail(f.blob, { maxSize: 300, quality: 0.7 });
+          entry = { url, revoke };
+        } catch (e) {
+          console.warn('Thumbnail failed; falling back to object URL');
+          const url = URL.createObjectURL(f.blob);
+          entry = { url, revoke: () => URL.revokeObjectURL(url) };
+        }
+        thumbMap.set(f.id, entry);
+      }
       const img = document.createElement('img');
       img.className = 'thumb';
       img.alt = f.name;
-      img.src = f.dataUrl;
+      img.src = entry.url;
       li.appendChild(img);
-    } else if (f.kind === 'text') {
+    } else {
       const icon = document.createElement('div');
       icon.className = 'text-thumb';
       icon.textContent = 'TXT';
       li.appendChild(icon);
     }
-
     li.appendChild(caption);
     frag.appendChild(li);
-  });
+  }
   fileListEl.innerHTML = '';
   fileListEl.appendChild(frag);
 }
 
 async function onFilesChosen(list) {
-  const count = await addFiles(list);
-  renderList();
+  await addFiles(list);
+  renderPreviews();
 }
 
 fileInput?.addEventListener('change', (e) => {
@@ -74,4 +91,4 @@ viewBtn?.addEventListener('click', () => {
 });
 
 // initial
-renderList();
+renderPreviews();

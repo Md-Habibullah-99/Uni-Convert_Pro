@@ -15,9 +15,7 @@ function computePlacement(imgW, imgH, pageW, pageH, margin) {
   return { x, y, drawW, drawH };
 }
 
-async function compressImage(buffer, type, maxDim = 2000, quality = 0.8) {
-  const blob = new Blob([buffer], { type: type || 'image/*' });
-  const bitmap = await createImageBitmap(blob);
+async function compressBitmap(bitmap, maxDim = 2000, quality = 0.8) {
   const { width: w, height: h } = bitmap;
   const scale = Math.min(1, maxDim / Math.max(w, h));
   const targetW = Math.max(1, Math.round(w * scale));
@@ -29,6 +27,12 @@ async function compressImage(buffer, type, maxDim = 2000, quality = 0.8) {
   const jpegBlob = await canvas.convertToBlob({ type: 'image/jpeg', quality });
   const ab = await jpegBlob.arrayBuffer();
   return { arrayBuffer: ab, width: targetW, height: targetH };
+}
+
+async function compressImageBuffer(buffer, type, maxDim = 2000, quality = 0.8) {
+  const blob = new Blob([buffer], { type: type || 'image/*' });
+  const bitmap = await createImageBitmap(blob);
+  return compressBitmap(bitmap, maxDim, quality);
 }
 
 function wrapTextToLines(text, font, fontSize, maxWidth) {
@@ -61,7 +65,14 @@ self.onmessage = async (e) => {
 
     for (const it of items) {
       if (it.kind === 'image' && it.buffer) {
-        const { arrayBuffer, width, height } = await compressImage(it.buffer, it.type, maxDim, quality);
+        const { arrayBuffer, width, height } = await compressImageBuffer(it.buffer, it.type, maxDim, quality);
+        const jpg = await pdfDoc.embedJpg(arrayBuffer);
+        const page = pdfDoc.addPage([A4_WIDTH, A4_HEIGHT]);
+        const placement = computePlacement(width, height, A4_WIDTH, A4_HEIGHT, margin);
+        page.drawImage(jpg, { x: placement.x, y: placement.y, width: placement.drawW, height: placement.drawH });
+      } else if (it.kind === 'image' && it.file) {
+        const bitmap = await createImageBitmap(it.file);
+        const { arrayBuffer, width, height } = await compressBitmap(bitmap, maxDim, quality);
         const jpg = await pdfDoc.embedJpg(arrayBuffer);
         const page = pdfDoc.addPage([A4_WIDTH, A4_HEIGHT]);
         const placement = computePlacement(width, height, A4_WIDTH, A4_HEIGHT, margin);
@@ -74,21 +85,38 @@ self.onmessage = async (e) => {
         const lines = wrapTextToLines(it.text, font, fontSize, maxWidth);
         let x = margin;
         let y = A4_HEIGHT - margin - fontSize;
-        for (const l of lines) {
-          if (y <= margin) {
-            page = pdfDoc.addPage([A4_WIDTH, A4_HEIGHT]);
-            x = margin;
-            y = A4_HEIGHT - margin - fontSize;
-          }
-          page.drawText(l, { x, y, size: fontSize, font });
-          y -= lineHeight;
-        }
-      }
-    }
-
-    const pdfBytes = await pdfDoc.save();
-    const pdfBuffer = pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength);
-    self.postMessage({ ok: true, pdfBuffer }, [pdfBuffer]);
+        for (const it of items) {
+          if (it.kind === 'image' && it.buffer) {
+            const { arrayBuffer, width, height } = await compressImageBuffer(it.buffer, it.type, maxDim, quality);
+            const jpg = await pdfDoc.embedJpg(arrayBuffer);
+            const page = pdfDoc.addPage([A4_WIDTH, A4_HEIGHT]);
+            const placement = computePlacement(width, height, A4_WIDTH, A4_HEIGHT, margin);
+            page.drawImage(jpg, { x: placement.x, y: placement.y, width: placement.drawW, height: placement.drawH });
+          } else if (it.kind === 'image' && (it.file || it.blob)) {
+            const bitmap = await createImageBitmap(it.file || it.blob);
+            const { arrayBuffer, width, height } = await compressBitmap(bitmap, maxDim, quality);
+            const jpg = await pdfDoc.embedJpg(arrayBuffer);
+            const page = pdfDoc.addPage([A4_WIDTH, A4_HEIGHT]);
+            const placement = computePlacement(width, height, A4_WIDTH, A4_HEIGHT, margin);
+            page.drawImage(jpg, { x: placement.x, y: placement.y, width: placement.drawW, height: placement.drawH });
+          } else if (it.kind === 'text' && (it.text || it.blob)) {
+            const page = pdfDoc.addPage([A4_WIDTH, A4_HEIGHT]);
+            const fontSize = 12;
+            const lineHeight = Math.round(fontSize * 1.2);
+            const maxWidth = A4_WIDTH - margin * 2;
+            const text = it.text ?? (await it.blob.text());
+            const lines = wrapTextToLines(text, font, fontSize, maxWidth);
+            let x = margin;
+            let y = A4_HEIGHT - margin - fontSize;
+            for (const l of lines) {
+              if (y <= margin) {
+                page = pdfDoc.addPage([A4_WIDTH, A4_HEIGHT]);
+                x = margin;
+                y = A4_HEIGHT - margin - fontSize;
+              }
+              page.drawText(l, { x, y, size: fontSize, font });
+              y -= lineHeight;
+            }
   } catch (err) {
     self.postMessage({ ok: false, error: String(err && err.message || err) });
   }

@@ -1,4 +1,4 @@
-import { getFiles, removeAt, moveItem } from './state.js';
+import { getFiles, removeAt, moveItem } from './idbState.js';
 
 const fileListEl = document.getElementById('file-list');
 const backBtn = document.getElementById('back-upload');
@@ -6,8 +6,8 @@ const toDownloadBtn = document.getElementById('to-download');
 
 function isImageType(type) { return /^image\/(png|jpe?g)$/i.test(type); }
 
-function renderList() {
-  const files = getFiles();
+async function renderList() {
+  const files = await getFiles();
   if (!files.length) {
     fileListEl.innerHTML = '<li>No files selected.</li>';
     return;
@@ -26,7 +26,9 @@ function renderList() {
       const img = document.createElement('img');
       img.className = 'thumb';
       img.alt = f.name;
-      img.src = f.dataUrl;
+      const url = URL.createObjectURL(f.blob);
+      img.src = url;
+      img.onload = () => URL.revokeObjectURL(url);
       li.appendChild(img);
     } else if (f.kind === 'text') {
       const icon = document.createElement('div');
@@ -56,8 +58,8 @@ function renderList() {
     const removeBtn = document.createElement('button');
     removeBtn.className = 'secondary';
     removeBtn.textContent = 'Remove';
-    removeBtn.addEventListener('click', () => {
-      removeAt(idx);
+    removeBtn.addEventListener('click', async () => {
+      await removeAt(idx);
       renderList();
     });
 
@@ -92,8 +94,7 @@ function renderList() {
       const fromIdx = Number(fromIdxStr);
       const toIdx = Number(item.dataset.index || -1);
       if (!Number.isNaN(fromIdx) && !Number.isNaN(toIdx) && fromIdx !== toIdx) {
-        moveItem(fromIdx, toIdx);
-        renderList();
+        moveItem(fromIdx, toIdx).then(() => renderList());
       }
     });
   });
