@@ -96,9 +96,27 @@ const clearBtn = document.getElementById('clear-btn');
 const backBtn = document.getElementById('back-selected');
 
 convertBtn?.addEventListener('click', convert);
-clearBtn?.addEventListener('click', () => {
-  clearFiles();
-  alert('Selection cleared.');
+function showTooltipNear(el, text) {
+  if (!el) return;
+  const rect = el.getBoundingClientRect();
+  const tip = document.createElement('div');
+  tip.className = 'tooltip-bubble';
+  tip.textContent = text;
+  tip.style.left = rect.left + rect.width / 2 + 'px';
+  tip.style.top = rect.top + window.scrollY + 'px';
+  document.body.appendChild(tip);
+  // force reflow then show
+  void tip.offsetWidth;
+  tip.style.opacity = '1';
+  setTimeout(() => {
+    tip.style.opacity = '0';
+    setTimeout(() => tip.remove(), 150);
+  }, 1200);
+}
+
+clearBtn?.addEventListener('click', async () => {
+  await clearFiles();
+  showTooltipNear(clearBtn, 'Cleared');
 });
 backBtn?.addEventListener('click', () => {
   window.location.href = 'selected.html';
